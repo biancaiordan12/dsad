@@ -1,0 +1,77 @@
+subiect Chat
+
+
+1)Sã se salveze in fisierul Cerintal.csv coeficientii medii la nivel de judet 
+(media coeficientilor pe subactivitäti), in ordine descrescátoare. 
+Pentru fiecare judet se va salva indicativul si coeficientul mediu.
+import pandas as pd
+
+# Citirea fișierului cu coeficienții pe județe
+energy_data = pd.read_csv("EnergLoc.csv")
+
+# Calcularea coeficienților medii pe județe
+energy_data["Coeficient Mediu"] = energy_data.iloc[:, 1:].mean(axis=1)
+
+# Sortarea descrescătoare după coeficientul mediu
+sorted_data = energy_data[["Judet", "Coeficient Mediu"]].sort_values(by="Coeficient Mediu", ascending=False)
+
+# Salvarea în fișierul Cerinta1.csv
+sorted_data.to_csv("Cerinta1.csv", index=False)
+print("Cerinta1.csv a fost salvat cu succes!")
+
+2) Sã se salveze în fisierul Cerinta2.esv judetele in care nici o subactivitate nu are 
+coeficientul mai mare decât 5. Se va salva pentru fiecare judet care indeplineste conditia, 
+indicativul de judet si coeficientii pe subactivitäti.
+# Filtrarea județelor unde niciun coeficient nu depășește 5
+filtered_data = energy_data[(energy_data.iloc[:, 1:] <= 5).all(axis=1)]
+
+# Salvarea în fișierul Cerinta2.csv
+filtered_data.to_csv("Cerinta2.csv", index=False)
+print("Cerinta2.csv a fost salvat cu succes!")
+
+
+3)Sã se salveze in fisierul Cerinta3.csv coeficientii de variatie (raportul dintre abatere standard si medie) 
+pentru fiecare subactivitate la nivel de regiuni. Abaterea standard si media pentri o subactivitate la nivelul regiunii se calculeaza pe baza coeficientilor judetelor din regiunea respectivá. 
+Se va salva codul regiunii si coeficientii de variatie.
+
+# Citirea fișierului cu codurile NUTS
+nuts_data = pd.read_csv("RO_NUTS.csv")
+
+# Îmbinarea datelor cu informațiile despre regiuni
+merged_data = pd.merge(energy_data, nuts_data, on="Judet")
+
+# Calcularea coeficienților de variație pe regiuni pentru fiecare subactivitate
+cols_subactivitati = energy_data.columns[1:-1]  # Excludem "Judet" și "Coeficient Mediu"
+cv_results = {}
+
+for col in cols_subactivitati:
+    grouped = merged_data.groupby("Regiune")[col]
+    cv_results[col] = (grouped.std() / grouped.mean()).round(5)  # Coeficient de variație
+
+# Crearea unui DataFrame pentru coeficienții de variație
+cv_data = pd.DataFrame(cv_results)
+cv_data.reset_index(inplace=True)
+
+# Salvarea în fișierul Cerinta3.csv
+cv_data.to_csv("Cerinta3.csv", index=False)
+print("Cerinta3.csv a fost salvat cu succes!")
+
+
+4)Sã se calculeze si sã se afiseze in fisieril Cerinta4.esv judetele cu cei mai mari coeficienti de localizare
+ pe subactivitäti la nivelul fiecãrei regiuni.
+ Se va salva codul regiunii si judetele cu coeficientii cei mai mari pentru fiecare subactivitate.
+# Determinarea județului cu coeficientul maxim pe fiecare subactivitate în fiecare regiune
+max_per_region = {}
+
+for col in cols_subactivitati:
+    max_indices = merged_data.groupby("Regiune")[col].idxmax()
+    max_per_region[col] = merged_data.loc[max_indices, "Judet"].values
+
+# Crearea unui DataFrame cu rezultatele
+max_data = pd.DataFrame(max_per_region)
+max_data["Regiune"] = merged_data["Regiune"].unique()
+max_data = max_data[["Regiune"] + cols_subactivitati.tolist()]  # Reordonare
+
+# Salvarea în fișierul Cerinta4.csv
+max_data.to_csv("Cerinta4.csv", index=False)
+print("Cerinta4.csv a fost salvat cu succes!")
