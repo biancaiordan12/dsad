@@ -1,0 +1,129 @@
+import pandas as pd
+import numpy as np
+
+#cerinta 1 - localitățile în care numărul de total de decedați
+# (Decedați + DecedatiSub1An) este mai mare decât numărul de născuți vii
+
+miscare = pd.read_csv("data_in/MiscareaNatLoc.csv", index_col=0)
+#print(miscare)
+
+totalDecedati =  miscare["Decedati"] + miscare["DecedatiSub1An"]
+#print(totalDecedati)
+
+cerinta1 = miscare[miscare["NascutiVii"] < (miscare["Decedati"] + miscare["DecedatiSub1An"])]
+cerinta1["totalDecedati"] = totalDecedati
+cerinta1_ = cerinta1[["Localitate", "totalDecedati", "NascutiVii"]]
+cerinta1_.to_csv("data_out/Cerinta1.csv")
+
+#Cerinta 2 -  rata mortalității infantile la nivel de localitate, în ordine
+# descrescătoare. Rata mortalității infantile se calculează DecedatiSub1An*1000/ NascutiVii.
+rmi = (miscare["DecedatiSub1An"] * 1000)/ miscare["NascutiVii"]
+#print(rmi)
+cerinta2 = miscare[["Localitate"]]
+cerinta2["RMI"] = rmi
+cerinta2.sort_values(by="RMI", ascending=False, inplace=True)
+cerinta2.to_csv("data_out/Cerinta2.csv")
+
+#Cerinta 3 -  rata sporului natural la nivel de județ.
+# Rata sporului natural este diferența dintre rata natalității (născuți vii la 1000 locuitori)
+# și rata mortalității (decedați la 1000 locuitori).
+populatie = pd.read_csv("data_in/PopulatiaPeLocalitati.csv", index_col=0)
+#print(populatie)
+
+cerinta3 = miscare[["NascutiVii", "Decedati"]].merge(populatie[["Judet", "Populatie"]], left_index=True, right_index=True)
+#print(cerinta3)
+rsn = (cerinta3["NascutiVii"]*1000 / cerinta3["Populatie"]) - (cerinta3["Decedati"]*1000 / cerinta3["Populatie"])
+cerinta3["RSN"] = rsn
+cerinta3_ = cerinta3.groupby(by="Judet").mean()
+#print(cerinta3_)
+cerinta3_["RSN"].to_csv("data_out/Cerinta3.csv")
+
+#Cerinta 4 -  localitățile în care ratele (valorile indicatorilor la 1000 locuitori) sunt cele mai mari
+cerinta4 = miscare.merge(populatie[["Judet", "Populatie"]], left_index=True, right_index=True)
+#cerinta4 -  coeficienții de variație ai indicatorilor la nivel de județ.
+#Coeficientul de variație pentru un județ se calculează prin raportarea abaterii standard a indicatorului respectiv la media sa.
+#aux3 are toate datele din miscare + judete
+cerinta4_2 = aux3.groupby(by="Judet")[['Casatorii', 'Decedati', 'Divorturi', 'NascutiMorti', 'NascutiVii']].apply(func=cv)
+#print(cerinta4_2)
+cerinta4_2.to_csv("data_out/Cerinta4_2.csv")
+
+
+
+
+
+
+
+import numpy as np
+import pandas as pd
+
+#Cerinta 1 -  consumul mediu pe cei cinci ani la nivel de țară, în ordine 
+# descrescătoare după consum
+alcohol = pd.read_csv("data_in/alcohol.csv", index_col=0)
+fisier2 = pd.read_csv("data_in/CoduriTariExtins.csv", index_col=0)
+coduri = fisier2["Country_Code"]
+
+#print(alcohol)
+cerinta1 = alcohol.merge(coduri, left_index=True, right_index=True)
+cerinta1["Consum mediu"] = alcohol.mean(axis=1)
+cerinta1.drop(["2000", "2005", "2010", "2015", "2018"], axis=1, inplace=True)
+cerinta1.sort_values(by="Consum mediu", ascending=False, inplace=True)
+cerinta1.to_csv("data_out/Cerinta1.csv")
+#print(cerinta1)
+
+#Cerinta 2 - anul cu cel mai mare consum pentru fiecare țară
+cerinta2 = alcohol.idxmax(axis=1)
+#print(cerinta2)
+cerinta2.to_csv("data_out/Cerinta2.csv")
+
+#SAU  --- doar ca nu merge
+#variabile = ['2000', '2005', '2010', '2015', '2018']
+
+# Creăm un DataFrame pentru a salva rezultatele
+#cerinta2_ = []
+#assert isinstance(cerinta2_, pd.DataFrame)
+
+# Iterăm prin fiecare țară
+#for index, row in alcohol.iterrows():
+    # Inițializăm anul cu o valoare de început
+    #max_consumption = -1
+    #max_year = None
+
+    # Iterăm prin fiecare an și găsim consumul maxim
+    #for year in variabile:
+        #if row[year] > max_consumption:
+            #max_consumption = row[year]
+            #max_year = year
+
+    # Adăugăm rezultatele în lista cerinta2
+    #cerinta2_.append({
+        #: index,  # Codul țării
+        #"Country": fisier2.loc[index],  # Numele țării
+        #"Anul": max_year  # Anul cu consumul maxim
+    #})
+
+#cerinta2_.to_csv('data_out/Cerinta2_.csv', index=False)
+
+
+
+#Cerinta 3 - coeficienților de variație pentru fiecare an la nivel de continent.
+# Coeficientul de variație se calculează prin raportarea abaterii standard a indicatorului respectiv la media sa
+cerinta3 = alcohol.merge(fisier2, left_index=True, right_index=True)
+cerinta3.drop(["Country_Code"], axis=1, inplace=True)
+cerinta3 = cerinta3.groupby(by="Continent").apply(func = lambda x: x.std()/x.mean())
+cerinta3.to_csv("data_out/Cerinta3.csv")
+
+
+
+#Cerinta 4 -  țările la care se înregistrează cel mai mare consum, la nivel de continent, pe ani.
+cerinta4 = alcohol.merge(fisier2, left_index=True, right_index=True)
+#print(cerinta4)
+
+variabile = ['2000', '2005', '2010', '2015', '2018']
+
+# Funcția care determină țara cu consum maxim pentru fiecare an la nivel de continent
+def functie4(x: pd.DataFrame):
+    k = np.argmax(x[variabile].values, axis=0)  # Indicele maximului pentru fiecare coloană (an)
+    return pd.Series(x.iloc[k]["Country_Code"].values, index=variabile)
+
+cerinta4 = cerinta4.groupby("Continent").apply(functie4).reset_index()
+cerinta4.to_csv('data_out/Cerinta4.csv', index=False)
